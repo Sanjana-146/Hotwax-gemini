@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopEasy - Home</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <a href="shop.html" class="logo">ShopEasy</a>
+        <div class="nav-links">
+            <span id="userGreeting">Hello, User</span>
+            <a href="cart.html" class="nav-btn">
+                Cart <span id="cartCount" class="cart-badge">0</span>
+            </a>
+            <a href="#" id="logoutBtn" class="nav-btn" style="color: var(--danger)">Logout</a>
+        </div>
+    </nav>
+
+    <div class="controls">
+        <div class="search-bar form-group" style="margin-bottom: 0;">
+            <input type="text" id="searchInput" placeholder="Search products...">
+        </div>
+        <select id="categoryFilter" class="filter-dropdown">
+            <option value="all">All Categories</option>
+            </select>
+    </div>
+
+    <div id="loader" class="loader hidden"></div>
+    <div id="productsGrid" class="products-grid">
+        </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
