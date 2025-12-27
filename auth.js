@@ -1,69 +1,100 @@
-// --- AUTHENTICATION LOGIC ---
+/*
+    auth.js
+    Handles Login and Registration forms on index.html
+*/
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Redirect if already logged in
-    if (getCurrentUser()) window.location.href = 'shop.html';
+    // If user is already logged in, skip login page
+    if (getSessionUser()) {
+        window.location.href = 'shop.html';
+        return;
+    }
 
-    const loginForm = document.getElementById('loginForm');
-    const registerForm = document.getElementById('registerForm');
-    const showLogin = document.getElementById('showLogin');
-    const showRegister = document.getElementById('showRegister');
-
-    // Toggle Logic
-    const switchTab = (isLogin) => {
-        if (isLogin) {
-            loginForm.classList.remove('hidden');
-            registerForm.classList.add('hidden');
-            showLogin.classList.add('active');
-            showRegister.classList.remove('active');
-        } else {
-            registerForm.classList.remove('hidden');
-            loginForm.classList.add('hidden');
-            showRegister.classList.add('active');
-            showLogin.classList.remove('active');
-        }
+    // DOM Elements
+    const forms = {
+        login: document.getElementById('loginForm'),
+        register: document.getElementById('registerForm')
+    };
+    
+    const tabs = {
+        loginBtn: document.getElementById('showLogin'),
+        regBtn: document.getElementById('showRegister')
     };
 
-    showLogin.addEventListener('click', () => switchTab(true));
-    showRegister.addEventListener('click', () => switchTab(false));
+    // --- Event Listeners ---
 
-    // Register Handler
-    registerForm.addEventListener('submit', (e) => {
+    // Switch to Register view
+    tabs.regBtn.addEventListener('click', () => {
+        toggleView('register');
+    });
+
+    // Switch to Login view
+    tabs.loginBtn.addEventListener('click', () => {
+        toggleView('login');
+    });
+
+    // Handle Registration
+    forms.register.addEventListener('submit', (e) => {
         e.preventDefault();
-        const name = document.getElementById('regName').value;
-        const email = document.getElementById('regEmail').value;
+        
+        const name = document.getElementById('regName').value.trim();
+        const email = document.getElementById('regEmail').value.trim();
         const pass = document.getElementById('regPass').value;
-        const confirm = document.getElementById('regConfirmPass').value;
-        const error = document.getElementById('regError');
+        const confirmPass = document.getElementById('regConfirmPass').value;
+        const errDisplay = document.getElementById('regError');
 
-        if (pass !== confirm) return showError(error, "Passwords do not match");
+        // Basic validation
+        if (pass !== confirmPass) {
+            showError(errDisplay, "Passwords don't match!");
+            return;
+        }
 
-        const result = registerUser(name, email, pass);
-        if (result.success) {
-            alert('Registration Successful! Please Login.');
-            switchTab(true);
+        const result = registerNewUser(name, email, pass);
+        
+        if (result.ok) {
+            alert('Account created! Please login.');
+            toggleView('login'); // Switch back to login
+            forms.register.reset(); // Clear form
         } else {
-            showError(error, result.msg);
+            showError(errDisplay, result.message);
         }
     });
 
-    // Login Handler
-    loginForm.addEventListener('submit', (e) => {
+    // Handle Login
+    forms.login.addEventListener('submit', (e) => {
         e.preventDefault();
-        const email = document.getElementById('loginEmail').value;
+        
+        const email = document.getElementById('loginEmail').value.trim();
         const pass = document.getElementById('loginPass').value;
-        const error = document.getElementById('loginError');
+        const errDisplay = document.getElementById('loginError');
 
-        const result = loginUser(email, pass);
-        if (result.success) {
+        const result = authenticateUser(email, pass);
+        
+        if (result.ok) {
+            // console.log("Login success", result.user);
             window.location.href = 'shop.html';
         } else {
-            showError(error, result.msg);
+            showError(errDisplay, result.message);
         }
     });
-});
 
-function showError(el, msg) {
-    el.textContent = msg;
-    el.style.display = 'block';
-}
+    // Helper to switch tabs
+    function toggleView(view) {
+        if (view === 'login') {
+            forms.login.classList.remove('hidden');
+            forms.register.classList.add('hidden');
+            tabs.loginBtn.classList.add('active');
+            tabs.regBtn.classList.remove('active');
+        } else {
+            forms.register.classList.remove('hidden');
+            forms.login.classList.add('hidden');
+            tabs.regBtn.classList.add('active');
+            tabs.loginBtn.classList.remove('active');
+        }
+    }
+
+    function showError(element, msg) {
+        element.textContent = msg;
+        element.style.display = 'block';
+    }
+});

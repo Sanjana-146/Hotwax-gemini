@@ -1,40 +1,51 @@
-// --- CART PAGE LOGIC ---
+/*
+    cart.js
+    Displays items stored in LocalStorage for the current user.
+*/
 
 document.addEventListener('DOMContentLoaded', () => {
-    checkAuthRedirect();
-    renderCart();
+    protectRoute();
+    loadCartItems();
 });
 
-function renderCart() {
+function loadCartItems() {
     const container = document.getElementById('cartItems');
-    const totalEl = document.getElementById('cartTotal');
-    const user = getCurrentUser();
-    const cart = getCart(user.email);
+    const totalDisplay = document.getElementById('cartTotal');
+    
+    const user = getSessionUser();
+    const cart = getUserCart(user.email);
 
-    if (cart.length === 0) {
+    // Empty state check
+    if (!cart || cart.length === 0) {
         container.innerHTML = `
-            <div style="text-align:center; padding: 3rem;">
-                <i class="fas fa-shopping-basket" style="font-size: 3rem; color: #ddd;"></i>
-                <p style="margin-top: 1rem; color: #666;">Your cart is empty.</p>
-                <a href="shop.html" class="btn btn-sm" style="display:inline-block; margin-top:1rem;">Start Shopping</a>
+            <div class="empty-cart">
+                <i class="fas fa-shopping-basket"></i>
+                <p>Your cart is empty.</p>
+                <a href="shop.html" class="btn btn-sm" style="width:auto; margin-top:10px;">Go Shopping</a>
             </div>`;
-        totalEl.textContent = '0.00';
+        totalDisplay.textContent = '0.00';
         return;
     }
 
-    let total = 0;
+    let grandTotal = 0;
+
+    // Generate HTML for cart items
     container.innerHTML = cart.map(item => {
-        total += item.price * item.quantity;
+        const itemTotal = item.price * item.quantity;
+        grandTotal += itemTotal;
+
         return `
             <div class="cart-item">
-                <img src="${item.image}" class="cart-img" alt="${item.title}">
+                <img src="${item.image}" class="cart-img" alt="product">
+                
                 <div class="cart-info">
                     <h4>${item.title}</h4>
                     <span class="item-price">$${item.price} x ${item.quantity}</span>
                 </div>
+                
                 <div class="cart-actions">
-                    <span class="item-total">$${(item.price * item.quantity).toFixed(2)}</span>
-                    <button class="trash-btn" onclick="handleRemove(${item.id})">
+                    <span class="item-total">$${itemTotal.toFixed(2)}</span>
+                    <button class="trash-btn" onclick="removeItem(${item.id})">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
@@ -42,12 +53,18 @@ function renderCart() {
         `;
     }).join('');
 
-    totalEl.textContent = total.toFixed(2);
+    totalDisplay.textContent = grandTotal.toFixed(2);
 }
 
-function handleRemove(id) {
-    const user = getCurrentUser();
-    removeFromCartDB(id, user.email);
-    renderCart();
-    updateCartBadge();
+function removeItem(id) {
+    const user = getSessionUser();
+    
+    // Remove from storage
+    const newCart = removeItemFromCart(id, user.email);
+    
+    // Re-render UI
+    loadCartItems();
+    updateNavbar();
+    
+    showToast("Item removed from cart", "error");
 }

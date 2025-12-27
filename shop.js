@@ -1,108 +1,152 @@
-// --- SHOP PAGE LOGIC ---
+/*
+    shop.js
+    Fetches products from API, handles filtering, and "Add to Cart" logic.
+*/
 
-const API_URL = 'https://fakestoreapi.com/products';
-let allProducts = [];
+const STORE_API = 'https://fakestoreapi.com/products';
+let productsData = []; // Store globally for filtering
 
 document.addEventListener('DOMContentLoaded', () => {
-    checkAuthRedirect();
-    initShop();
+    protectRoute(); // Ensure user is logged in
+    loadProducts();
+
+    // Search input with Debounce (Optimization)
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', debounce(handleSearch, 300));
+
+    // Category filter
+    document.getElementById('categoryFilter').addEventListener('change', handleFilter);
 });
 
-async function initShop() {
+async function loadProducts() {
     const grid = document.getElementById('productsGrid');
-    const loader = document.getElementById('loader');
-    
-    loader.classList.remove('hidden');
-    
-    try {
-        const res = await fetch(API_URL);
-        allProducts = await res.json();
-        renderProducts(allProducts);
-        populateCategories();
-    } catch (err) {
-        console.error(err);
-        grid.innerHTML = '<p style="text-align:center; color: red;">Failed to load products.</p>';
-    } finally {
-        loader.classList.add('hidden');
-    }
+    const spinner = document.getElementById('loader');
 
-    // Event Listeners for Filters
-    document.getElementById('searchInput').addEventListener('input', filterProducts);
-    document.getElementById('categoryFilter').addEventListener('change', filterProducts);
+    try {
+        spinner.classList.remove('hidden'); // Show loader
+        
+        const response = await fetch(STORE_API);
+        productsData = await response.json();
+        
+        renderProductGrid(productsData);
+        setupCategoryDropdown();
+        
+    } catch (error) {
+        console.error("API Error:", error);
+        grid.innerHTML = '<div class="error-msg" style="display:block; text-align:center">Failed to load products. Check your internet.</div>';
+        showToast("Error fetching data", "error");
+    } finally {
+        spinner.classList.add('hidden'); // Hide loader
+    }
 }
 
-function renderProducts(products) {
+function renderProductGrid(items) {
     const grid = document.getElementById('productsGrid');
-    const user = getCurrentUser();
-    const cart = getCart(user.email);
-    const cartIds = cart.map(i => i.id);
+    const user = getSessionUser();
+    const userCart = getUserCart(user.email);
+    
+    // Get list of IDs already in cart for button state
+    const cartIds = userCart.map(item => item.id);
 
-    grid.innerHTML = products.map(p => {
-        const isInCart = cartIds.includes(p.id);
+    // Map through items and create HTML cards
+    const cardsHtml = items.map(product => {
+        const isAdded = cartIds.includes(product.id);
         
-        // Generating random rating stars for UI appeal
-        const rating = Math.round(p.rating?.rate || 4);
-        const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+        // Make simple star rating visualization
+        const rate = Math.round(product.rating?.rate || 0);
+        const stars = '★'.repeat(rate) + '☆'.repeat(5 - rate);
 
         return `
-        <div class="product-card">
-            <div class="card-badge">HOT</div>
-            <div class="product-image-container">
-                <img src="${p.image}" alt="${p.title}">
-                <div class="overlay-actions">
-                    <button class="icon-btn"><i class="far fa-heart"></i></button>
-                    <button class="icon-btn"><i class="far fa-eye"></i></button>
+            <div class="product-card">
+                <span class="card-badge">HOT</span>
+                
+                <div class="product-image-container">
+                    <img src="${product.image}" alt="${product.title}" loading="lazy">
+                    <div class="overlay-actions">
+                        <button class="icon-btn"><i class="far fa-heart"></i></button>
+                    </div>
+                </div>
+
+                <div class="product-details">
+                    <div class="product-meta">
+                        <span class="category-tag">${product.category}</span>
+                        <span class="rating">${stars}</span>
+                    </div>
+                    
+                    <h3 class="product-title">${product.title}</h3>
+                    
+                    <div class="product-bottom">
+                        <span class="price">$${product.price}</span>
+                        <button 
+                            class="add-btn ${isAdded ? 'added' : ''}" 
+                            onclick="triggerAddToCart(${product.id}, this)">
+                            ${isAdded ? 'In Cart <i class="fas fa-check"></i>' : 'Add <i class="fas fa-shopping-bag"></i>'}
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div class="product-details">
-                <div class="product-meta">
-                    <span class="category-tag">${p.category}</span>
-                    <span class="rating">${stars}</span>
-                </div>
-                <h3 class="product-title" title="${p.title}">${p.title}</h3>
-                <div class="product-bottom">
-                    <span class="price">$${p.price}</span>
-                    <button 
-                        class="add-btn ${isInCart ? 'added' : ''}" 
-                        onclick="handleAddToCart(${p.id}, this)">
-                        ${isInCart ? 'In Cart <i class="fas fa-check"></i>' : 'Add <i class="fas fa-shopping-bag"></i>'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    `}).join('');
+        `;
+    }).join('');
+
+    grid.innerHTML = cardsHtml;
 }
 
-function handleAddToCart(id, btn) {
-    const product = allProducts.find(p => p.id === id);
-    const user = getCurrentUser();
+function triggerAddToCart(id, btnElement) {
+    const product = productsData.find(p => p.id === id);
+    const user = getSessionUser();
+
+    if (!product) return;
+
+    saveToCart(product, user.email);
+    updateNavbar(); // Refresh badge count
     
-    addToCartDB(product, user.email);
-    updateCartBadge();
+    // Visual feedback
+    btnElement.innerHTML = 'In Cart <i class="fas fa-check"></i>';
+    btnElement.classList.add('added');
     
-    // UI Feedback
-    btn.innerHTML = 'In Cart <i class="fas fa-check"></i>';
-    btn.classList.add('added');
+    showToast(`Added ${product.title.substring(0, 15)}...`, 'success');
 }
 
-function populateCategories() {
-    const categories = [...new Set(allProducts.map(p => p.category))];
+function setupCategoryDropdown() {
     const select = document.getElementById('categoryFilter');
-    categories.forEach(c => {
+    // Get unique categories
+    const categories = [...new Set(productsData.map(p => p.category))];
+    
+    categories.forEach(cat => {
         const option = document.createElement('option');
-        option.value = c;
-        option.textContent = c.toUpperCase();
+        option.value = cat;
+        option.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
         select.appendChild(option);
     });
 }
 
-function filterProducts() {
-    const search = document.getElementById('searchInput').value.toLowerCase();
-    const cat = document.getElementById('categoryFilter').value;
+function handleSearch() {
+    filterData();
+}
 
-    const filtered = allProducts.filter(p => {
-        return (cat === 'all' || p.category === cat) && 
-               p.title.toLowerCase().includes(search);
+function handleFilter() {
+    filterData();
+}
+
+// Combine Search and Category logic
+function filterData() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    const category = document.getElementById('categoryFilter').value;
+
+    const filtered = productsData.filter(item => {
+        const matchesSearch = item.title.toLowerCase().includes(query);
+        const matchesCat = category === 'all' || item.category === category;
+        return matchesSearch && matchesCat;
     });
-    renderProducts(filtered);
+
+    renderProductGrid(filtered);
+}
+
+// Debounce Utility (Learned this pattern to optimize search)
+function debounce(func, delay) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => func.apply(this, args), delay);
+    };
 }
