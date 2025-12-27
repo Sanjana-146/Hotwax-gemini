@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShopEasy - Cart</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <nav>
         <a href="shop.html" class="logo">ShopEasy</a>
@@ -18,14 +22,18 @@
     <div class="cart-container">
         <h2>Your Shopping Cart</h2>
         <div id="cartItems">
-            </div>
-        
+        </div>
+
         <div class="total-section">
             <h3>Total: $<span id="cartTotal">0.00</span></h3>
-            <button class="btn" style="width: auto; margin-top: 1rem;" onclick="alert('Checkout feature coming soon!')">Checkout</button>
+            <button class="btn" style="width: auto; margin-top: 1rem;"
+                onclick="alert('Checkout feature coming soon!')">Checkout</button>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="data.js"></script>
+    <script src="common.js"></script>
+    <script src="cart.js"></script>
 </body>
+
 </html>
